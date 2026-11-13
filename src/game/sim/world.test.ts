@@ -40,7 +40,7 @@ export function bot(w: World): Input {
     const fwd = (w.p.x - w.vine.x) * f.x + (w.p.z - w.vine.z) * f.z;
     const vf = w.v.x * f.x + w.v.z * f.z;
     const rising = w.v.y > 0 && vf > 1 && fwd > 0;
-    const letGo = rising && ((ahead && releaseReaches(w, ahead)) || fwd > w.rope * Math.sin((30 * Math.PI) / 180));
+    const letGo = rising && !!ahead && releaseReaches(w, ahead);
     return { hold: !letGo, steer, lean: speed < 9 ? 1 : 0 };
   }
   return { hold: true, steer, lean: 0 };
