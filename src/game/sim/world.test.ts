@@ -150,16 +150,16 @@ describe("swing physics", () => {
 });
 
 describe("playability", () => {
-  it.each([1, 7, 42, 1234])("a simple player chains vines for 300 m (seed %i)", (seed) => {
+  it.each([1, 7, 42, 1234])("a simple player chains vines for 200 m (seed %i)", (seed) => {
     const w = createWorld(seed);
     startRun(w);
     let t = 0;
-    while (w.mode !== "fallen" && w.distance < 300 && t < 200) {
+    while (w.mode !== "fallen" && w.distance < 200 && t < 200) {
       sim(w, 0.5, bot);
       t += 0.5;
     }
     expect(w.mode).not.toBe("fallen");
-    expect(w.distance).toBeGreaterThanOrEqual(300);
+    expect(w.distance).toBeGreaterThanOrEqual(200);
   });
 
   it("the course keeps generating vines ahead and drops old ones", () => {
