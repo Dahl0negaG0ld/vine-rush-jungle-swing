@@ -85,7 +85,7 @@ export function updateCourse(c: Course, playerZ: number): void {
     c.genZ = z;
   }
   const cutoff = playerZ - PRUNE_BEHIND;
-  if (c.vines.length && c.vines[0].z < cutoff) {
+  if ((c.vines[0]?.z ?? cutoff) < cutoff) {
     c.vines = c.vines.filter((v) => v.z >= cutoff);
   }
 }

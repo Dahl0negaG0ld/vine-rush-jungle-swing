@@ -75,7 +75,7 @@ const START_ANGLE = Math.PI / 4;
 export function createWorld(seed = 1): World {
   const course = createCourse(seed);
   updateCourse(course, 0);
-  const v0 = course.vines[0];
+  const v0 = course.vines[0]!;
   return {
     course,
     p: {

@@ -31,7 +31,7 @@ export function makeGroundTexture(): THREE.CanvasTexture {
       }
   };
   for (let i = 0; i < 60; i++) blob(r() * 256, r() * 256, 10 + r() * 30, r() < 0.5 ? "#33421f" : "#465a2b");
-  for (let i = 0; i < 260; i++) blob(r() * 256, r() * 256, 2 + r() * 4, ["#6b5a2e", "#7d6a34", "#57692d", "#2a3519"][(r() * 4) | 0]);
+  for (let i = 0; i < 260; i++) blob(r() * 256, r() * 256, 2 + r() * 4, ["#6b5a2e", "#7d6a34", "#57692d", "#2a3519"][(r() * 4) | 0] ?? "#6b5a2e");
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;

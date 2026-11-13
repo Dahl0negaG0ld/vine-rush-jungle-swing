@@ -117,7 +117,7 @@ describe("swing physics", () => {
     w.v = { x: 0, y: 0, z: 0 };
     step(w, { hold: true, steer: 0, lean: 0 });
     expect(w.mode).toBe("swing");
-    expect(w.vine?.id).toBe(v.id);
+    expect((w.vine as Vine | null)?.id).toBe(v.id);
   });
 
   it("does not grab when not holding", () => {
@@ -125,7 +125,7 @@ describe("swing physics", () => {
     startRun(w);
     w.mode = "air";
     w.vine = null;
-    const v = w.course.vines[1];
+    const v = w.course.vines[1]!;
     w.p = { x: v.x + 0.5, y: v.y - 6, z: v.z };
     step(w, LET_GO);
     expect(w.mode).toBe("air");
