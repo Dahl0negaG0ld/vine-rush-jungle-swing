@@ -131,7 +131,7 @@ export function findTarget(w: World, steer: number): Target | null {
     if (ahead > TARGET_LOOK) continue;
     const c = closestOnVine(vine, w.p);
     const inReach = c.dist <= GRAB_RADIUS;
-    if (!inReach && ahead < 1) continue; // already passed it
+    if (!inReach && ahead < -1.5) continue; // already passed it
     const lateral = Math.abs(dx * r.x + dz * r.z);
     let score = c.dist + lateral * 1.5;
     if (inReach) score -= 1000;
