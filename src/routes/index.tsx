@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Vector3, Quaternion, MathUtils, type Group, type Mesh } from "three";
 import { advance, createWorld, startRun, type Input, type World } from "../game/sim/world";
 import { centerX } from "../game/sim/course";
 import { dragToAxes } from "../game/sim/input";
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "VINE RUSH — Jungle Swing" }, { name: "description", content: "First-person jungle vine swinging game" }] }),
+  head: () => ({ meta: [{ title: "VINE RUSH — Jungle Swing" }, { name: "description", content: "Third-person jungle vine swinging game" }] }),
   component: JungleGame,
 });
 
@@ -48,28 +49,29 @@ function Vine({ x, y, z, length, active, target }: { x: number; y: number; z: nu
   );
 }
 
-function Hands({ grabbing }: { grabbing: boolean }) {
-  return (
-    <group position={[0, -0.8, -1.4]}>
-      {[-1, 1].map(side => (
-        <group key={side} position={[side * 0.42, 0, 0]} rotation={[grabbing ? -0.7 : 0.22, 0, side * 0.22]}>
-          <mesh position={[0, -0.15, 0]}>
-            <capsuleGeometry args={[0.13, 0.45, 4, 8]} />
-            <meshStandardMaterial color="#66794a" />
-          </mesh>
-          <mesh position={[0, 0.23, -0.08]}>
-            <sphereGeometry args={[0.16, 9, 8]} />
-            <meshStandardMaterial color="#cf986f" />
-          </mesh>
-        </group>
-      ))}
+function Swinger({ avatarRef, ropeRef }: { avatarRef: React.RefObject<Group | null>; ropeRef: React.RefObject<Mesh | null> }) {
+  return <>
+    <group ref={avatarRef}>
+      <mesh position={[0, -0.8, 0]} castShadow><capsuleGeometry args={[0.35, 0.9, 6, 10]} /><meshStandardMaterial color="#e5a82f" /></mesh>
+      <mesh position={[0, -0.12, 0]} castShadow><sphereGeometry args={[0.3, 12, 10]} /><meshStandardMaterial color="#dba27c" /></mesh>
+      <mesh position={[0, -1.65, -0.17]} rotation={[0.22, 0, -0.16]}><capsuleGeometry args={[0.13, 0.7, 5, 8]} /><meshStandardMaterial color="#243d38" /></mesh>
+      <mesh position={[0, -1.65, 0.17]} rotation={[-0.22, 0, 0.16]}><capsuleGeometry args={[0.13, 0.7, 5, 8]} /><meshStandardMaterial color="#243d38" /></mesh>
+      {[-1, 1].map(side => <mesh key={side} position={[side * 0.22, -0.38, 0]} rotation={[0, 0, side * 0.3]}><capsuleGeometry args={[0.1, 0.6, 5, 8]} /><meshStandardMaterial color="#dba27c" /></mesh>)}
     </group>
-  );
+    <mesh ref={ropeRef}><cylinderGeometry args={[0.045, 0.045, 1, 7]} /><meshStandardMaterial color="#b8d47c" /></mesh>
+  </>;
 }
 
-function WorldScene({ worldRef, inputRef, lookRef, onTick }: { worldRef: React.MutableRefObject<World>; inputRef: React.MutableRefObject<Input>; lookRef: React.MutableRefObject<{ yaw: number; pitch: number }>; onTick: (w: World) => void }) {
+function WorldScene({ worldRef, inputRef, lookRef, cameraModeRef, onTick }: { worldRef: React.MutableRefObject<World>; inputRef: React.MutableRefObject<Input>; lookRef: React.MutableRefObject<{ yaw: number; pitch: number }>; cameraModeRef: React.MutableRefObject<"chase" | "first">; onTick: (w: World) => void }) {
   const { camera } = useThree();
   const elapsed = useRef(0);
+  const avatarRef = useRef<Group>(null);
+  const ropeRef = useRef<Mesh>(null);
+  const camGoal = useRef(new Vector3());
+  const aimGoal = useRef(new Vector3());
+  const lastGrab = useRef(0);
+  const cinematicUntil = useRef(0);
+  const ropeAxis = useMemo(() => new Vector3(0, 1, 0), []);
   const lastMode = useRef("");
   const lastDistance = useRef(-1);
   const trees = useMemo(() => Array.from({ length: 90 }, (_, i) => {
@@ -82,16 +84,45 @@ function WorldScene({ worldRef, inputRef, lookRef, onTick }: { worldRef: React.M
   useFrame((_, delta) => {
     const w = worldRef.current;
     advance(w, inputRef.current, delta);
-    const bob = w.mode === "swing" ? Math.sin(w.time * 8) * 0.045 : 0;
-    camera.position.set(w.p.x, w.p.y + 0.15 + bob, w.p.z);
-    camera.rotation.order = "YXZ";
-    camera.rotation.set(Math.max(-1.15, Math.min(1.15, lookRef.current.pitch - w.v.y * 0.012)), Math.PI + w.yaw + lookRef.current.yaw, Math.max(-0.1, Math.min(0.1, -w.v.x * 0.008)), "YXZ");
+    // Smooth chase camera stays behind the character; brief close-up after a great catch.
+    if (w.grabCount !== lastGrab.current) {
+      if (lastGrab.current > 0 || w.grabCount > 1) cinematicUntil.current = w.time + 0.8;
+      lastGrab.current = w.grabCount;
+    }
+    const yaw = w.yaw + lookRef.current.yaw;
+    const forward = new Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+    const isFirst = cameraModeRef.current === "first" || (w.mode !== "ready" && w.time < cinematicUntil.current);
+    const bob = w.mode === "swing" ? Math.sin(w.time * 5) * 0.025 : 0;
+    const head = new Vector3(w.p.x, w.p.y - 0.3, w.p.z);
+    const distance = isFirst ? 0.08 : 6.8;
+    const height = isFirst ? 0.1 : 2.6;
+    camGoal.current.copy(head).addScaledVector(forward, -distance).add(new Vector3(0, height + bob, 0));
+    const smooth = 1 - Math.exp(-5.5 * Math.min(delta, 0.05));
+    camera.position.lerp(camGoal.current, smooth);
+    aimGoal.current.copy(head).addScaledVector(forward, 11).add(new Vector3(0, 0.9 + lookRef.current.pitch * 8, 0));
+    camera.lookAt(aimGoal.current);
+    if (avatarRef.current) {
+      avatarRef.current.position.set(w.p.x, w.p.y, w.p.z);
+      avatarRef.current.rotation.set(MathUtils.clamp(w.v.z * 0.012, -0.3, 0.3), w.yaw, MathUtils.clamp(-w.v.x * 0.025, -0.35, 0.35));
+      avatarRef.current.visible = !isFirst;
+    }
+    if (ropeRef.current) {
+      ropeRef.current.visible = !!w.vine;
+      if (w.vine) {
+        const top = new Vector3(w.vine.x, w.vine.y, w.vine.z);
+        const bottom = new Vector3(w.p.x, w.p.y, w.p.z);
+        const dir = top.clone().sub(bottom);
+        ropeRef.current.position.copy(top).add(bottom).multiplyScalar(0.5);
+        ropeRef.current.scale.set(1, dir.length(), 1);
+        ropeRef.current.quaternion.copy(new Quaternion().setFromUnitVectors(ropeAxis, dir.normalize()));
+      }
+    }
     elapsed.current += delta;
-    const distance = Math.floor(w.distance);
-    if (elapsed.current > 0.12 || lastMode.current !== w.mode || lastDistance.current !== distance) {
+    const progress = Math.floor(w.distance);
+    if (elapsed.current > 0.12 || lastMode.current !== w.mode || lastDistance.current !== progress) {
       elapsed.current = 0;
       lastMode.current = w.mode;
-      lastDistance.current = distance;
+      lastDistance.current = progress;
       onTick(w);
     }
   });
@@ -109,7 +140,7 @@ function WorldScene({ worldRef, inputRef, lookRef, onTick }: { worldRef: React.M
       </mesh>
       {trees.map(t => <Tree key={t.seed} {...t} />)}
       {w.course.vines.map(v => <Vine key={v.id} {...v} active={w.vine?.id === v.id} target={w.target?.vine.id === v.id} />)}
-      <group position={camera.position} rotation={camera.rotation}><Hands grabbing={w.mode === "swing"} /></group>
+      <Swinger avatarRef={avatarRef} ropeRef={ropeRef} />
     </>
   );
 }
@@ -120,6 +151,8 @@ function JungleGame() {
   const pointerRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const lookPointerRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const lookRef = useRef({ yaw: 0, pitch: 0 });
+  const cameraModeRef = useRef<"chase" | "first">("chase");
+  const [cameraMode, setCameraMode] = useState<"chase" | "first">("chase");
   const [hud, setHud] = useState({ distance: 0, mode: "ready", vines: 0, target: false });
   const [run, setRun] = useState(0);
   const [best, setBest] = useState(0);
@@ -131,6 +164,7 @@ function JungleGame() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      if (e.code === "KeyC" && !e.repeat) setCameraMode(current => { const next = current === "chase" ? "first" : "chase"; cameraModeRef.current = next; return next; });
       if (e.code === "Space") { e.preventDefault(); if (worldRef.current.mode === "ready") startRun(worldRef.current); inputRef.current.hold = true; }
       if (e.code === "ArrowLeft" || e.code === "KeyA") inputRef.current.steer = -1;
       if (e.code === "ArrowRight" || e.code === "KeyD") inputRef.current.steer = 1;
@@ -164,6 +198,8 @@ function JungleGame() {
     pointerRef.current = null;
     lookPointerRef.current = null;
     lookRef.current = { yaw: 0, pitch: 0 };
+    cameraModeRef.current = "chase";
+    setCameraMode("chase");
     finished.current = false;
     setHud({ distance: 0, mode: "ready", vines: 0, target: false });
     setRun(n => n + 1);
@@ -212,17 +248,18 @@ function JungleGame() {
       onContextMenu={e => e.preventDefault()}
     >
       <Canvas key={run} camera={{ fov: 78, near: 0.06, far: 145 }} dpr={[1, 1.5]} gl={{ antialias: false, powerPreference: "high-performance" }} style={{ position: "absolute", inset: 0 }}>
-        <WorldScene worldRef={worldRef} inputRef={inputRef} lookRef={lookRef} onTick={tick} />
+        <WorldScene worldRef={worldRef} inputRef={inputRef} lookRef={lookRef} cameraModeRef={cameraModeRef} onTick={tick} />
       </Canvas>
       <div style={{ position: "absolute", top: "max(18px, env(safe-area-inset-top))", left: 18, pointerEvents: "none", textShadow: "0 2px 8px #122" }}>
         <div style={{ fontWeight: 900, letterSpacing: 3, fontSize: 19 }}>VINE RUSH</div>
         <div style={{ fontSize: 30, fontWeight: 800 }}>{hud.distance} <span style={{ fontSize: 14 }}>m</span></div>
         <div style={{ fontSize: 12 }}>BEST {best} m · VINES {hud.vines}</div>
       </div>
-      <div style={{ position: "absolute", top: "46%", left: "50%", transform: "translate(-50%, -50%)", width: 12, height: 12, border: "2px solid #f6f2c5", borderRadius: "50%", boxShadow: hud.target ? "0 0 18px 7px #effb6b" : "0 0 6px #173", pointerEvents: "none" }} />
+      <button onPointerDown={e => e.stopPropagation()} onClick={() => setCameraMode(current => { const next = current === "chase" ? "first" : "chase"; cameraModeRef.current = next; return next; })} style={{ position: "absolute", top: "max(18px, env(safe-area-inset-top))", right: 16, zIndex: 3, background: "#173b2acc", color: "white", border: "1px solid #b4dc92", borderRadius: 12, padding: "9px 12px", fontWeight: 700, cursor: "pointer" }}>{cameraMode === "chase" ? "CAM: BEHIND" : "CAM: FIRST"}</button>
+      <div style={{ position: "absolute", top: "46%"', left: "50%", transform: "translate(-50%, -50%)", width: 12, height: 12, border: "2px solid #f6f2c5", borderRadius: "50%", boxShadow: hud.target ? "0 0 18px 7px #effb6b" : "0 0 6px #173", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "max(32px, env(safe-area-inset-bottom))", left: 16, right: 16, textAlign: "center", pointerEvents: "none", fontWeight: 700, textShadow: "0 2px 7px #142" }}>
         {hud.mode === "ready" ? "TOUCH & HOLD TO SWING · RELEASE TO FLY" : hud.mode === "swing" ? "RELEASE TO LAUNCH · DRAG TO STEER" : hud.mode === "air" ? hud.target ? "HOLD! CATCH THAT VINE!" : "HOLD TO GRAB THE NEXT VINE" : "JUNGLE RUN COMPLETE"}
-        <div style={{ fontWeight: 400, fontSize: 12, marginTop: 6, opacity: 0.85 }}>Desktop: Space to grab · WASD steer · right-drag to look · Mobile: second finger to look</div>
+        <div style={{ fontWeight: 400, fontSize: 12, marginTop: 6, opacity: 0.85 }}>Desktop: Space grab · WASD steer · C camera · right-drag look · Mobile: second finger look</div>
       </div>
       {hud.mode === "fallen" && <div style={{ position: "absolute", inset: 0, background: "#0a2118c9", display: "grid", placeItems: "center" }}>
         <div style={{ textAlign: "center", padding: 24 }}>
