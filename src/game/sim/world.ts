@@ -17,6 +17,7 @@ import {
   SLIDE_SPEED,
   PUMP_ACCEL,
   REGRAB_COOLDOWN,
+  RELEASE_AIM,
   RELEASE_BOOST,
   RELEASE_UP,
   SWING_DAMP,
@@ -187,6 +188,19 @@ function release(w: World): void {
     w.v.z += f.z * RELEASE_BOOST;
   }
   w.v.y += RELEASE_UP;
+  // Aim assist: bend the launch a little toward the highlighted vine.
+  if (w.target) {
+    const hs = Math.hypot(w.v.x, w.v.z);
+    if (hs > 1) {
+      const cur = Math.atan2(w.v.x, w.v.z);
+      const want = Math.atan2(w.target.vine.x - w.p.x, w.target.vine.z - w.p.z);
+      const d = Math.max(-RELEASE_AIM, Math.min(RELEASE_AIM, wrapAngle(want - cur)));
+      if (Math.abs(wrapAngle(want - cur)) < Math.PI / 2) {
+        w.v.x = Math.sin(cur + d) * hs;
+        w.v.z = Math.cos(cur + d) * hs;
+      }
+    }
+  }
   w.lastVineId = w.vine.id;
   w.releaseTime = w.time;
   w.vine = null;

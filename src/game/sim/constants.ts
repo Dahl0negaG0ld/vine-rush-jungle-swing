@@ -36,6 +36,7 @@ export const SWING_DAMP = 0.015;
 
 // Release
 export const RELEASE_UP = 0.5; // pull-up kick when letting go
+export const RELEASE_AIM = 0.3; // rad: launch bends toward the highlighted vine
 export const RELEASE_BOOST = 0.5; // forward kick when letting go
 
 // Course
