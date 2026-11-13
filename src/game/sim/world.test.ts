@@ -41,7 +41,7 @@ export function bot(w: World): Input {
     const vf = w.v.x * f.x + w.v.z * f.z;
     const rising = w.v.y > 0 && vf > 1 && fwd > 0;
     const letGo = rising && !!ahead && releaseReaches(w, ahead);
-    return { hold: !letGo, steer, lean: speed < 9 ? 1 : 0 };
+    return { hold: !letGo, steer, lean: speed < 7 ? 1 : 0 };
   }
   return { hold: true, steer, lean: 0 };
 }
