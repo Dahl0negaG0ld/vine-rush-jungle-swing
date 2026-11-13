@@ -11,6 +11,7 @@ import {
   GRAB_RADIUS,
   HEADING_FOLLOW,
   MAX_FRAME,
+  MAX_SPEED,
   MIN_ROPE,
   ROPE_FLOOR,
   PUMP_ACCEL,
@@ -241,6 +242,14 @@ export function step(w: World, input: Input, dt = DT): void {
   w.v.x *= damp;
   w.v.y *= damp;
   w.v.z *= damp;
+
+  const sp = Math.sqrt(w.v.x * w.v.x + w.v.y * w.v.y + w.v.z * w.v.z);
+  if (sp > MAX_SPEED) {
+    const k = MAX_SPEED / sp;
+    w.v.x *= k;
+    w.v.y *= k;
+    w.v.z *= k;
+  }
 
   w.p.x += w.v.x * dt;
   w.p.y += w.v.y * dt;

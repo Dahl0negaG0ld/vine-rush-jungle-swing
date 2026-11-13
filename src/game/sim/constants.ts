@@ -29,7 +29,8 @@ export const HEADING_FOLLOW = 2.5; // view yaw eases toward the corridor heading
 export const HEADING_MAX_OFF = 0.35; // max look offset toward the travel direction
 export const STEER_LOOK = 0.15; // view turns slightly into a steer
 export const DRAG = 0.025;
-export const AIR_DRAG_QUAD = 0.006; // speed-squared drag: tames runaway speed
+export const AIR_DRAG_QUAD = 0.01;
+export const MAX_SPEED = 17; // hard cap keeps swings readable // speed-squared drag: tames runaway speed
 export const SWING_DAMP = 0.015;
 
 // Release
