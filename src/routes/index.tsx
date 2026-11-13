@@ -1,10 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
 import { advance, createWorld, startRun, type Input, type World } from "../game/sim/world";
 import { centerX } from "../game/sim/course";
-import { useGame } from "../game/store";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [{ title: "VINE RUSH — Jungle Swing" }, { name: "description", content: "First-person jungle vine swinging game" }] }),
@@ -24,11 +22,11 @@ function Tree({ x, z, seed }: { x: number; z: number; seed: number }) {
       </mesh>
       <mesh position={[0, height + 1.4, 0]} castShadow>
         <icosahedronGeometry args={[5.5 + seed % 3, 1]} />
-        <meshStandardMaterial color={palette[seed % palette.length]} roughness={1} flatShading />
+        <meshStandardMaterial color={palette[seed % palette.length] ?? "#275b31"} roughness={1} flatShading />
       </mesh>
       <mesh position={[2.5, height - 1, -1]} castShadow>
         <icosahedronGeometry args={[3.4, 0]} />
-        <meshStandardMaterial color={palette[(seed + 2) % palette.length]} flatShading />
+        <meshStandardMaterial color={palette[(seed + 2) % palette.length] ?? "#36763d"} flatShading />
       </mesh>
     </group>
   );
