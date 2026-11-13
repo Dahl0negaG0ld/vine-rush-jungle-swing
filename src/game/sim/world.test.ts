@@ -28,7 +28,11 @@ function releaseReaches(w: World, target: Vine): boolean {
 }
 
 /** A plain player: pump while hanging, let go when the jump lands on the highlighted vine, reach in the air. */
+const grabT = new WeakMap<World, { n: number; t: number }>();
 export function bot(w: World): Input {
+  const g = grabT.get(w);
+  if (!g || g.n !== w.grabCount) grabT.set(w, { n: w.grabCount, t: w.time });
+  const swingTime = w.time - (grabT.get(w)?.t ?? w.time);
   const ahead = w.target?.vine;
   const r = rightOf(w.yaw);
   const lateral = ahead ? (ahead.x - w.p.x) * r.x + (ahead.z - w.p.z) * r.z : 0;
@@ -40,7 +44,8 @@ export function bot(w: World): Input {
     const fwd = (w.p.x - w.vine.x) * f.x + (w.p.z - w.vine.z) * f.z;
     const vf = w.v.x * f.x + w.v.z * f.z;
     const rising = w.v.y > 0 && vf > 1 && fwd > 0;
-    const letGo = rising && !!ahead && releaseReaches(w, ahead);
+    const fallback = swingTime > 3 && fwd > w.rope * Math.sin((20 * Math.PI) / 180);
+    const letGo = rising && ((!!ahead && releaseReaches(w, ahead)) || fallback);
     return { hold: !letGo, steer, lean: speed < 7 ? 1 : 0 };
   }
   return { hold: true, steer, lean: 0 };
