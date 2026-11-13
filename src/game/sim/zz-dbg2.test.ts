@@ -2,7 +2,7 @@ import { it } from "vitest";
 import { createWorld, sim, startRun } from "./world";
 import { bot } from "./world.test";
 it("dbg2", () => {
-  for (const seed of [2, 7]) {
+  for (const seed of [1, 5]) {
   const w = createWorld(seed);
   startRun(w);
   let last = "";
