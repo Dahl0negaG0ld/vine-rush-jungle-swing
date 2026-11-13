@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { advance, createWorld, startRun, type Input, type World } from "../game/sim/world";
 import { centerX } from "../game/sim/course";
+import { dragToAxes } from "../game/sim/input";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [{ title: "VINE RUSH — Jungle Swing" }, { name: "description", content: "First-person jungle vine swinging game" }] }),
@@ -175,8 +176,9 @@ function JungleGame() {
       onPointerMove={e => {
         const p = pointerRef.current;
         if (!p || p.id !== e.pointerId) return;
-        inputRef.current.steer = Math.max(-1, Math.min(1, (p.x - e.clientX) / 85));
-        inputRef.current.lean = Math.max(-1, Math.min(1, (p.y - e.clientY) / 100));
+        const axes = dragToAxes(e.clientX - p.x, e.clientY - p.y);
+        inputRef.current.steer = axes.steer;
+        inputRef.current.lean = axes.lean;
       }}
       onPointerUp={e => {
         if (pointerRef.current?.id !== e.pointerId) return;
