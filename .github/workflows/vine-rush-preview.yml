@@ -2,8 +2,6 @@ name: VINE RUSH Preview (Cloudflare Free)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [feat/playable-jungle-mvp]
 
 permissions:
   contents: read
