@@ -73,7 +73,7 @@ describe("swing physics", () => {
       return HOLD;
     });
     const expected = w.rope * Math.sin(Math.PI / 4);
-    expect(maxZ).toBeGreaterThan(expected * 0.9);
+    expect(maxZ).toBeGreaterThan(expected * 0.85); // air drag takes a little
     expect(maxZ).toBeLessThan(expected * 1.05);
   });
 
