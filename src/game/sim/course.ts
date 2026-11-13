@@ -52,18 +52,25 @@ function r(c: Course, min: number, max: number): number {
   return min + v * (max - min);
 }
 
+/** 0 at the start, 1 once the difficulty ramp is complete. */
+export function rampAt(z: number): number {
+  return Math.min(1, Math.max(0, z) / RAMP_DIST);
+}
+
 export function spacingMaxAt(z: number): number {
-  return SPACING_MAX + SPACING_RAMP * Math.min(1, Math.max(0, z) / RAMP_DIST);
+  return SPACING_MAX + SPACING_RAMP * rampAt(z);
 }
 
 /** Generates vines up to playerZ + GEN_AHEAD and prunes ones far behind. Mutates. */
 export function updateCourse(c: Course, playerZ: number): void {
   while (c.genZ < playerZ + GEN_AHEAD) {
     const z = c.genZ + r(c, SPACING_MIN, spacingMaxAt(c.genZ));
-    const x = centerX(z) + r(c, -LATERAL_JITTER, LATERAL_JITTER);
+    const ease = rampAt(z); // early jungle is gentler
+    const jitter = LATERAL_JITTER * (0.4 + 0.6 * ease);
+    const x = centerX(z) + r(c, -jitter, jitter);
     const y = r(c, ANCHOR_Y_MIN, ANCHOR_Y_MAX);
     c.vines.push({ id: c.nextId++, x, y, z, length: r(c, VINE_LEN_MIN, VINE_LEN_MAX), phase: r(c, 0, 6.28) });
-    if (r(c, 0, 1) < SIDE_VINE_CHANCE) {
+    if (r(c, 0, 1) < SIDE_VINE_CHANCE && z > 60) {
       const side = r(c, 0, 1) < 0.5 ? -1 : 1;
       const sz = z + r(c, -2.5, 2.5);
       c.vines.push({
