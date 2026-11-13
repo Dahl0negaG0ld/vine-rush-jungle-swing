@@ -277,8 +277,12 @@ export function step(w: World, input: Input, dt = DT): void {
   // physics steps, and should catch before the next frame advances past it.
   if (w.mode === "air" && input.hold) {
     const arrival = findTarget(w, input.steer);
-    if (arrival?.inReach) grab(w, arrival);
-    w.target = arrival;
+    if (arrival?.inReach) {
+      grab(w, arrival);
+      w.target = findTarget(w, input.steer);
+    } else {
+      w.target = arrival;
+    }
   }
 
   if (w.mode === "swing" && w.vine) {
