@@ -67,7 +67,7 @@ function Hands({ grabbing }: { grabbing: boolean }) {
   );
 }
 
-function WorldScene({ worldRef, inputRef, onTick }: { worldRef: React.MutableRefObject<World>; inputRef: React.MutableRefObject<Input>; onTick: (w: World) => void }) {
+function WorldScene({ worldRef, inputRef, lookRef, onTick }: { worldRef: React.MutableRefObject<World>; inputRef: React.MutableRefObject<Input>; lookRef: React.MutableRefObject<{ yaw: number; pitch: number }>; onTick: (w: World) => void }) {
   const { camera } = useThree();
   const elapsed = useRef(0);
   const lastMode = useRef("");
@@ -85,7 +85,7 @@ function WorldScene({ worldRef, inputRef, onTick }: { worldRef: React.MutableRef
     const bob = w.mode === "swing" ? Math.sin(w.time * 8) * 0.045 : 0;
     camera.position.set(w.p.x, w.p.y + 0.15 + bob, w.p.z);
     camera.rotation.order = "YXZ";
-    camera.rotation.set(Math.max(-0.16, Math.min(0.2, -w.v.y * 0.012)), w.yaw, Math.max(-0.1, Math.min(0.1, -w.v.x * 0.008)), "YXZ");
+    camera.rotation.set(Math.max(-1.15, Math.min(1.15, lookRef.current.pitch - w.v.y * 0.012)), w.yaw + lookRef.current.yaw, Math.max(-0.1, Math.min(0.1, -w.v.x * 0.008)), "YXZ");
     elapsed.current += delta;
     const distance = Math.floor(w.distance);
     if (elapsed.current > 0.12 || lastMode.current !== w.mode || lastDistance.current !== distance) {
@@ -118,6 +118,8 @@ function JungleGame() {
   const worldRef = useRef(createWorld(7));
   const inputRef = useRef<Input>({ ...input });
   const pointerRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  const lookPointerRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  const lookRef = useRef({ yaw: 0, pitch: 0 });
   const [hud, setHud] = useState({ distance: 0, mode: "ready", vines: 0, target: false });
   const [run, setRun] = useState(0);
   const [best, setBest] = useState(0);
@@ -160,6 +162,8 @@ function JungleGame() {
     worldRef.current = createWorld(Math.floor(Math.random() * 100000) + 1);
     inputRef.current = { ...input };
     pointerRef.current = null;
+    lookPointerRef.current = null;
+    lookRef.current = { yaw: 0, pitch: 0 };
     finished.current = false;
     setHud({ distance: 0, mode: "ready", vines: 0, target: false });
     setRun(n => n + 1);
@@ -169,11 +173,24 @@ function JungleGame() {
       onPointerDown={e => {
         if (hud.mode === "fallen") return;
         e.currentTarget.setPointerCapture(e.pointerId);
+        // Right mouse drag or a second finger looks around without changing the swing.
+        if (e.button === 2 || pointerRef.current) {
+          lookPointerRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+          return;
+        }
         pointerRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
         inputRef.current.hold = true;
         if (worldRef.current.mode === "ready") startRun(worldRef.current);
       }}
       onPointerMove={e => {
+        const look = lookPointerRef.current;
+        if (look?.id === e.pointerId) {
+          lookRef.current.yaw -= (e.clientX - look.x) * 0.006;
+          lookRef.current.pitch = Math.max(-1.1, Math.min(1.1, lookRef.current.pitch - (e.clientY - look.y) * 0.006));
+          look.x = e.clientX;
+          look.y = e.clientY;
+          return;
+        }
         const p = pointerRef.current;
         if (!p || p.id !== e.pointerId) return;
         const axes = dragToAxes(e.clientX - p.x, e.clientY - p.y);
@@ -181,16 +198,21 @@ function JungleGame() {
         inputRef.current.lean = axes.lean;
       }}
       onPointerUp={e => {
+        if (lookPointerRef.current?.id === e.pointerId) { lookPointerRef.current = null; return; }
         if (pointerRef.current?.id !== e.pointerId) return;
         pointerRef.current = null;
         inputRef.current.hold = false;
         inputRef.current.steer = 0;
         inputRef.current.lean = 0;
       }}
-      onPointerCancel={() => { pointerRef.current = null; inputRef.current = { ...input }; }}
+      onPointerCancel={e => {
+        if (lookPointerRef.current?.id === e.pointerId) lookPointerRef.current = null;
+        if (pointerRef.current?.id === e.pointerId) { pointerRef.current = null; inputRef.current = { ...input }; }
+      }}
+      onContextMenu={e => e.preventDefault()}
     >
       <Canvas key={run} camera={{ fov: 78, near: 0.06, far: 145 }} dpr={[1, 1.5]} gl={{ antialias: false, powerPreference: "high-performance" }} style={{ position: "absolute", inset: 0 }}>
-        <WorldScene worldRef={worldRef} inputRef={inputRef} onTick={tick} />
+        <WorldScene worldRef={worldRef} inputRef={inputRef} lookRef={lookRef} onTick={tick} />
       </Canvas>
       <div style={{ position: "absolute", top: "max(18px, env(safe-area-inset-top))", left: 18, pointerEvents: "none", textShadow: "0 2px 8px #122" }}>
         <div style={{ fontWeight: 900, letterSpacing: 3, fontSize: 19 }}>VINE RUSH</div>
@@ -200,7 +222,7 @@ function JungleGame() {
       <div style={{ position: "absolute", top: "46%", left: "50%", transform: "translate(-50%, -50%)", width: 12, height: 12, border: "2px solid #f6f2c5", borderRadius: "50%", boxShadow: hud.target ? "0 0 18px 7px #effb6b" : "0 0 6px #173", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "max(32px, env(safe-area-inset-bottom))", left: 16, right: 16, textAlign: "center", pointerEvents: "none", fontWeight: 700, textShadow: "0 2px 7px #142" }}>
         {hud.mode === "ready" ? "TOUCH & HOLD TO SWING · RELEASE TO FLY" : hud.mode === "swing" ? "RELEASE TO LAUNCH · DRAG TO STEER" : hud.mode === "air" ? hud.target ? "HOLD! CATCH THAT VINE!" : "HOLD TO GRAB THE NEXT VINE" : "JUNGLE RUN COMPLETE"}
-        <div style={{ fontWeight: 400, fontSize: 12, marginTop: 6, opacity: 0.85 }}>Desktop: Space to grab/release · WASD or arrows to steer</div>
+        <div style={{ fontWeight: 400, fontSize: 12, marginTop: 6, opacity: 0.85 }}>Desktop: Space to grab · WASD steer · right-drag to look · Mobile: second finger to look</div>
       </div>
       {hud.mode === "fallen" && <div style={{ position: "absolute", inset: 0, background: "#0a2118c9", display: "grid", placeItems: "center" }}>
         <div style={{ textAlign: "center", padding: 24 }}>
