@@ -85,7 +85,7 @@ function WorldScene({ worldRef, inputRef, lookRef, onTick }: { worldRef: React.M
     const bob = w.mode === "swing" ? Math.sin(w.time * 8) * 0.045 : 0;
     camera.position.set(w.p.x, w.p.y + 0.15 + bob, w.p.z);
     camera.rotation.order = "YXZ";
-    camera.rotation.set(Math.max(-1.15, Math.min(1.15, lookRef.current.pitch - w.v.y * 0.012)), w.yaw + lookRef.current.yaw, Math.max(-0.1, Math.min(0.1, -w.v.x * 0.008)), "YXZ");
+    camera.rotation.set(Math.max(-1.15, Math.min(1.15, lookRef.current.pitch - w.v.y * 0.012)), Math.PI + w.yaw + lookRef.current.yaw, Math.max(-0.1, Math.min(0.1, -w.v.x * 0.008)), "YXZ");
     elapsed.current += delta;
     const distance = Math.floor(w.distance);
     if (elapsed.current > 0.12 || lastMode.current !== w.mode || lastDistance.current !== distance) {
