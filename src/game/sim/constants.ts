@@ -17,6 +17,7 @@ export const ASSIST_ACCEL = 8;
 export const VERTICAL_REACH = 0.7; // <1: you can stretch further up/down than sideways
 export const MIN_ROPE = 5.5; // top of each vine is lost in the canopy: no grabbing there
 export const ROPE_FLOOR = 2.5; // shortest rope possible after a high grab
+export const SLIDE_SPEED = 5; // m/s the hands slide down a vine grabbed too high
 export const REGRAB_COOLDOWN = 0.6; // s before the vine you left can be grabbed again
 export const TARGET_STICKY = 3; // keep the current target unless another is clearly better
 export const TARGET_LOOK = 24; // how far ahead vines are considered targets

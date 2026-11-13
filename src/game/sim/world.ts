@@ -14,6 +14,7 @@ import {
   MAX_SPEED,
   MIN_ROPE,
   ROPE_FLOOR,
+  SLIDE_SPEED,
   PUMP_ACCEL,
   REGRAB_COOLDOWN,
   RELEASE_BOOST,
@@ -56,6 +57,7 @@ export interface World {
   mode: Mode;
   vine: Vine | null; // vine currently held
   rope: number;
+  ropeTarget: number;
   time: number;
   distance: number;
   vinesGrabbed: number;
@@ -85,6 +87,7 @@ export function createWorld(seed = 1): World {
     mode: "ready",
     vine: v0,
     rope: START_ROPE,
+    ropeTarget: START_ROPE,
     time: 0,
     distance: 0,
     vinesGrabbed: 0,
@@ -158,6 +161,7 @@ function grab(w: World, t: Target): void {
   const dz = w.p.z - vine.z;
   const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
   w.rope = Math.max(ROPE_FLOOR, Math.min(vine.length, len)); // taut at once: no slack jerk
+  w.ropeTarget = Math.max(MIN_ROPE, w.rope); // grabbed high: hands slide down to the grip zone
   // Inelastic catch: the rope removes any outward radial velocity.
   const nx = dx / len,
     ny = dy / len,
@@ -256,6 +260,7 @@ export function step(w: World, input: Input, dt = DT): void {
   w.p.z += w.v.z * dt;
 
   if (w.mode === "swing" && w.vine) {
+    if (w.rope < w.ropeTarget) w.rope = Math.min(w.ropeTarget, w.rope + SLIDE_SPEED * dt);
     const dx = w.p.x - w.vine.x;
     const dy = w.p.y - w.vine.y;
     const dz = w.p.z - w.vine.z;
