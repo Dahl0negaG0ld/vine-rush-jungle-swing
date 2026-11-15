@@ -59,12 +59,12 @@ function Swinger({ avatarRef, ropeRef, armRefs, legRefs }: { avatarRef: React.Re
       <mesh position={[0, -0.21, 0]} castShadow><sphereGeometry args={[0.27, 14, 12]} /><meshStandardMaterial color={skin} /></mesh>
       <mesh position={[0, -0.08, -0.08]} castShadow><sphereGeometry args={[0.29, 12, 10]} /><meshStandardMaterial color="#35251a" roughness={1} /></mesh>
       <mesh position={[0, -0.31, 0.26]}><sphereGeometry args={[0.055, 7, 7]} /><meshStandardMaterial color="#563728" /></mesh>
-      {[-1, 1].map((side, i) => <group key={side}>
-        <group ref={armRefs[i]} position={[side * 0.4, -0.64, 0]} rotation={[0, 0, side * -2.55]}>
+      {[-1, 1].map(side => <group key={side}>
+        <group ref={side === -1 ? armRefs[0] : armRefs[1]} position={[side * 0.4, -0.64, 0]} rotation={[0, 0, side * -2.55]}>
           <mesh position={[0, -0.31, 0]} castShadow><capsuleGeometry args={[0.12, 0.53, 6, 8]} /><meshStandardMaterial color={skin} /></mesh>
           <mesh position={[0, -0.69, 0]}><sphereGeometry args={[0.12, 8, 8]} /><meshStandardMaterial color={skin} /></mesh>
         </group>
-        <group ref={legRefs[i]} position={[side * 0.22, -1.55, 0]}>
+        <group ref={side === -1 ? legRefs[0] : legRefs[1]} position={[side * 0.22, -1.55, 0]}>
           <mesh position={[0, -0.45, 0]} castShadow><capsuleGeometry args={[0.17, 0.65, 6, 9]} /><meshStandardMaterial color={skin} /></mesh>
           <mesh position={[0, -0.94, 0.12]} castShadow><capsuleGeometry args={[0.13, 0.25, 5, 8]} /><meshStandardMaterial color="#443a2a" /></mesh>
         </group>
