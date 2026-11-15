@@ -273,6 +273,18 @@ export function step(w: World, input: Input, dt = DT): void {
   w.p.y += w.v.y * dt;
   w.p.z += w.v.z * dt;
 
+  // Check again after movement: a fast-moving hand can enter reach between
+  // physics steps, and should catch before the next frame advances past it.
+  if (w.mode === "air" && input.hold) {
+    const arrival = findTarget(w, input.steer);
+    if (arrival?.inReach) {
+      grab(w, arrival);
+      w.target = findTarget(w, input.steer);
+    } else {
+      w.target = arrival;
+    }
+  }
+
   if (w.mode === "swing" && w.vine) {
     if (w.rope < w.ropeTarget) w.rope = Math.min(w.ropeTarget, w.rope + SLIDE_SPEED * dt);
     const dx = w.p.x - w.vine.x;
