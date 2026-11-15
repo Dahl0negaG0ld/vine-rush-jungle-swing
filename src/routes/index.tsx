@@ -49,14 +49,27 @@ function Vine({ x, y, z, length, active, target }: { x: number; y: number; z: nu
   );
 }
 
-function Swinger({ avatarRef, ropeRef }: { avatarRef: React.RefObject<Group | null>; ropeRef: React.RefObject<Mesh | null> }) {
+// Original jungle hero: a human-proportioned explorer with a vine-ready rig.
+function Swinger({ avatarRef, ropeRef, armRefs, legRefs }: { avatarRef: React.RefObject<Group | null>; ropeRef: React.RefObject<Mesh | null>; armRefs: React.RefObject<Group | null>[]; legRefs: React.RefObject<Group | null>[] }) {
+  const skin = "#b97950";
   return <>
     <group ref={avatarRef}>
-      <mesh position={[0, -0.8, 0]} castShadow><capsuleGeometry args={[0.35, 0.9, 6, 10]} /><meshStandardMaterial color="#e5a82f" /></mesh>
-      <mesh position={[0, -0.12, 0]} castShadow><sphereGeometry args={[0.3, 12, 10]} /><meshStandardMaterial color="#dba27c" /></mesh>
-      <mesh position={[0, -1.65, -0.17]} rotation={[0.22, 0, -0.16]}><capsuleGeometry args={[0.13, 0.7, 5, 8]} /><meshStandardMaterial color="#243d38" /></mesh>
-      <mesh position={[0, -1.65, 0.17]} rotation={[-0.22, 0, 0.16]}><capsuleGeometry args={[0.13, 0.7, 5, 8]} /><meshStandardMaterial color="#243d38" /></mesh>
-      {[-1, 1].map(side => <mesh key={side} position={[side * 0.22, -0.38, 0]} rotation={[0, 0, side * 0.3]}><capsuleGeometry args={[0.1, 0.6, 5, 8]} /><meshStandardMaterial color="#dba27c" /></mesh>)}
+      <mesh position={[0, -0.93, 0]} castShadow><capsuleGeometry args={[0.35, 0.8, 8, 12]} /><meshStandardMaterial color={skin} roughness={0.9} /></mesh>
+      <mesh position={[0, -1.38, 0]} castShadow><coneGeometry args={[0.53, 0.68, 5]} /><meshStandardMaterial color="#7d5031" roughness={1} /></mesh>
+      <mesh position={[0, -0.21, 0]} castShadow><sphereGeometry args={[0.27, 14, 12]} /><meshStandardMaterial color={skin} /></mesh>
+      <mesh position={[0, -0.08, -0.08]} castShadow><sphereGeometry args={[0.29, 12, 10]} /><meshStandardMaterial color="#35251a" roughness={1} /></mesh>
+      <mesh position={[0, -0.31, 0.26]}><sphereGeometry args={[0.055, 7, 7]} /><meshStandardMaterial color="#563728" /></mesh>
+      {[-1, 1].map((side, i) => <group key={side}>
+        <group ref={armRefs[i]} position={[side * 0.4, -0.64, 0]} rotation={[0, 0, side * -2.55]}>
+          <mesh position={[0, -0.31, 0]} castShadow><capsuleGeometry args={[0.12, 0.53, 6, 8]} /><meshStandardMaterial color={skin} /></mesh>
+          <mesh position={[0, -0.69, 0]}><sphereGeometry args={[0.12, 8, 8]} /><meshStandardMaterial color={skin} /></mesh>
+        </group>
+        <group ref={legRefs[i]} position={[side * 0.22, -1.55, 0]}>
+          <mesh position={[0, -0.45, 0]} castShadow><capsuleGeometry args={[0.17, 0.65, 6, 9]} /><meshStandardMaterial color={skin} /></mesh>
+          <mesh position={[0, -0.94, 0.12]} castShadow><capsuleGeometry args={[0.13, 0.25, 5, 8]} /><meshStandardMaterial color="#443a2a" /></mesh>
+        </group>
+      </group>)}
+      <mesh position={[0, -1.15, 0.34]} rotation={[0.2, 0, -0.25]}><boxGeometry args={[0.14, 0.75, 0.09]} /><meshStandardMaterial color="#a48b52" /></mesh>
     </group>
     <mesh ref={ropeRef}><cylinderGeometry args={[0.045, 0.045, 1, 7]} /><meshStandardMaterial color="#b8d47c" /></mesh>
   </>;
@@ -66,6 +79,10 @@ function WorldScene({ worldRef, inputRef, lookRef, cameraModeRef, onTick }: { wo
   const { camera } = useThree();
   const elapsed = useRef(0);
   const avatarRef = useRef<Group>(null);
+  const leftArm = useRef<Group>(null);
+  const rightArm = useRef<Group>(null);
+  const leftLeg = useRef<Group>(null);
+  const rightLeg = useRef<Group>(null);
   const ropeRef = useRef<Mesh>(null);
   const camGoal = useRef(new Vector3());
   const aimGoal = useRef(new Vector3());
@@ -105,6 +122,16 @@ function WorldScene({ worldRef, inputRef, lookRef, cameraModeRef, onTick }: { wo
       avatarRef.current.position.set(w.p.x, w.p.y, w.p.z);
       avatarRef.current.rotation.set(MathUtils.clamp(w.v.z * 0.012, -0.3, 0.3), w.yaw, MathUtils.clamp(-w.v.x * 0.025, -0.35, 0.35));
       avatarRef.current.visible = !isFirst;
+      // Physics-driven pose: grip overhead while attached, reach forward in flight,
+      // and kick the legs in response to momentum rather than canned animation.
+      const swing = w.mode === "swing";
+      const air = w.mode === "air";
+      const speed = Math.hypot(w.v.x, w.v.z);
+      const kick = Math.sin(w.time * 6) * Math.min(0.55, speed * 0.045);
+      if (leftArm.current) leftArm.current.rotation.set(air ? -1.2 : -0.12, 0, -2.5 + (air ? 1.2 : 0));
+      if (rightArm.current) rightArm.current.rotation.set(air ? -1.45 : -0.12, 0, 2.5 - (air ? 1.1 : 0));
+      if (leftLeg.current) leftLeg.current.rotation.x = swing ? kick + MathUtils.clamp(w.v.z * 0.025, -0.3, 0.3) : air ? -0.6 : 0;
+      if (rightLeg.current) rightLeg.current.rotation.x = swing ? -kick + MathUtils.clamp(w.v.z * 0.025, -0.3, 0.3) : air ? 0.4 : 0;
     }
     if (ropeRef.current) {
       ropeRef.current.visible = !!w.vine;
@@ -140,7 +167,7 @@ function WorldScene({ worldRef, inputRef, lookRef, cameraModeRef, onTick }: { wo
       </mesh>
       {trees.map(t => <Tree key={t.seed} {...t} />)}
       {w.course.vines.map(v => <Vine key={v.id} {...v} active={w.vine?.id === v.id} target={w.target?.vine.id === v.id} />)}
-      <Swinger avatarRef={avatarRef} ropeRef={ropeRef} />
+      <Swinger avatarRef={avatarRef} ropeRef={ropeRef} armRefs={[leftArm, rightArm]} legRefs={[leftLeg, rightLeg]} />
     </>
   );
 }
