@@ -50,7 +50,7 @@ function Vine({ x, y, z, length, active, target }: { x: number; y: number; z: nu
 }
 
 // Original jungle hero: a human-proportioned explorer with a vine-ready rig.
-function Swinger({ avatarRef, ropeRef, armRefs, legRefs }: { avatarRef: React.RefObject<Group | null>; ropeRef: React.RefObject<Mesh | null>; armRefs: React.RefObject<Group | null>[]; legRefs: React.RefObject<Group | null>[] }) {
+function Swinger({ avatarRef, ropeRef, armRefs, legRefs }: { avatarRef: React.RefObject<Group | null>; ropeRef: React.RefObject<Mesh | null>; armRefs: [React.RefObject<Group | null>, React.RefObject<Group | null>]; legRefs: [React.RefObject<Group | null>, React.RefObject<Group | null>] }) {
   const skin = "#b97950";
   return <>
     <group ref={avatarRef}>
